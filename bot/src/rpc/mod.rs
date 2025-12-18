@@ -1,2 +1,3 @@
-mod rpc;
-pub use rpc::*;
+mod manager;
+
+pub use manager::*;
