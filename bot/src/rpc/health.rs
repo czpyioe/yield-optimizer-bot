@@ -1,37 +1,53 @@
-// use alloy::providers::{Provider, ProviderBuilder};
-// use dotenv::dotenv;
-// use std::{env, time};
-// use std::time::{Duration, Instant};
-// // use tokio;
-// use anyhow::Result;
-// use serde::Deserialize;
+use alloy::providers::{Provider, ProviderBuilder};
+use std::time::{Instant};
+use anyhow::Result;
+use futures::stream::{self,StreamExt};
+use tokio::time::{timeout, Duration};
+use crate::rpc::manager::{RpcEndpoint};
+
+const CONCURRENT_CHECKS:usize = 50;
+const RPC_TIMEOUT:Duration = Duration::from_secs(5);
+
+pub async fn check_rpcs_health(endpoints:Vec<RpcEndpoint>)-> Result<Vec<RpcEndpoint>>{
+    let results = stream::iter(endpoints)
+        .map(|endpoint| async move {
+            match timeout(RPC_TIMEOUT, check_one_rpc(endpoint.clone())).await {
+                Ok(result)=>result,
+                Err(_)=>{
+                    let mut e = endpoint;
+                    e.is_healthy = false;
+                    e
+                }
+            }
+        })
+        .buffer_unordered(CONCURRENT_CHECKS)
+        .collect()
+        .await;    
+
+    Ok(results)
+}
 
 
-// // check health of the rpcs (keep only the best ones)
-// pub async fn check_rpcs_health()-> Vec<(String,f32,bool)>{
-//     let rpcs_urls = load_rpc_url();
-//     let mut rpcs_health : Vec<(String,f32,bool)> = vec![];
-//     for url in rpcs_urls{
-//         rpcs_health.push(check_one_rpc(url).await);
-//     }
-//     rpcs_health
-// }
+async fn check_one_rpc(mut endpoint: RpcEndpoint)->RpcEndpoint{
+    let start = Instant::now();
+    let mut is_healthy = false;
+    let mut latency = None; 
 
+    match ProviderBuilder::new().connect(&endpoint.url).await{
+        Ok(provider)=>{
+            if provider.get_chain_id().await.is_ok() {
+                is_healthy = true;
+                latency = Some(start.elapsed());
+            }
+        },
+        Err(_)=>{
+            is_healthy=false
+        }
+    };
 
+    endpoint.latency = latency;
+    endpoint.is_healthy = is_healthy;
+    endpoint.last_checked = Instant::now();
 
-// async fn check_one_rpc(url:String)->(String,f32,bool){
-//     let start = Instant::now();
-//     let mut rpc_works = true;
-//     match ProviderBuilder::new().connect(&url).await{
-//         Ok(v)=>{
-//             if let Err(_) = v.get_chain_id().await {
-//                 rpc_works = false;
-//             }
-//         },
-//         Err(_)=>{
-//             rpc_works=false
-//         }
-//     };
-//     let duration = start.elapsed();
-//     (url,duration.as_secs_f32(),rpc_works)
-// }
+    endpoint
+}

@@ -1163,6 +1163,7 @@ dependencies = [
  "alloy",
  "anyhow",
  "dotenv",
+ "futures",
  "reqwest",
  "serde",
  "tokio",
