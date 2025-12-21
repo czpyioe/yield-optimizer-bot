@@ -9,7 +9,7 @@ const CONCURRENT_CHECKS:usize = 50;
 const RPC_TIMEOUT:Duration = Duration::from_secs(5);
 
 pub async fn check_rpcs_health(endpoints:Vec<RpcEndpoint>)-> Result<Vec<RpcEndpoint>>{
-    let results = stream::iter(endpoints)
+    let results: Vec<RpcEndpoint> = stream::iter(endpoints)
         .map(|endpoint| async move {
             match timeout(RPC_TIMEOUT, check_one_rpc(endpoint.clone())).await {
                 Ok(result)=>result,
@@ -24,7 +24,12 @@ pub async fn check_rpcs_health(endpoints:Vec<RpcEndpoint>)-> Result<Vec<RpcEndpo
         .collect()
         .await;    
 
-    Ok(results)
+    let healthy: Vec<RpcEndpoint> = results
+        .into_iter()
+        .filter(|e| e.is_healthy)
+        .collect();
+
+    Ok(healthy)
 }
 
 

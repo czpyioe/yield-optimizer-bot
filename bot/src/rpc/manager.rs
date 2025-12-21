@@ -1,12 +1,13 @@
 use std::time::{Duration, Instant};
 use anyhow::Result;
+use std::collections::HashSet;
 
-use crate::rpc::check_rpcs_health;
 use crate::rpc::loader;
 use crate::rpc::health;
 
 pub struct RpcManager{
     pub rpc_url: Vec<RpcEndpoint>,
+    current_index: usize,
     last_health_check: Instant,
     last_rpc_fetch: Instant,
     health_check_interval: Duration,
@@ -26,34 +27,49 @@ pub struct RpcEndpoint{
 
 impl RpcManager{
     pub fn new(health_check_interval:Duration,rpc_fetch_interval:Duration) -> Self {
-        Self { 
-            rpc_url: Vec::new(), 
-            last_health_check: Instant::now(), 
-            last_rpc_fetch: Instant::now(), 
+        Self {
+            rpc_url: Vec::new(),
+            current_index:0,
+            last_health_check: Instant::now(),
+            last_rpc_fetch: Instant::now(),
             health_check_interval,
-            rpc_fetch_interval, 
+            rpc_fetch_interval,
         }
     }
 
-    async fn get_provider(&mut self)-> Result<()>{
+    async fn initialize(&mut self)-> Result<()>{
         let rpcs_url = loader::load_rpcs_url().await?;
-        let mut rpcs_endpoints:Vec<RpcEndpoint> = convert_stringvec_to_rpcendpointvec(rpcs_url)?;
-        self.rpc_url.append(&mut rpcs_endpoints);
+        self.rpc_url = convert_stringvec_to_rpcendpointvec(rpcs_url)?;
         self.last_rpc_fetch = Instant::now();
         self.refresh_health().await?;
         Ok(())
     }
 
+    async fn get_provider(&mut self)->Result<()>{
+        Ok(())
+    }
+
     async fn refresh_health(&mut self) -> Result<()>{
-        self.rpc_url = check_rpcs_health(self.rpc_url.clone()).await?;
+        self.rpc_url = health::check_rpcs_health(self.rpc_url.clone()).await?;
         self.last_health_check = Instant::now();
         Ok(())
     }
 
     async fn fetch_new_rpcs(& mut self)-> Result<()>{
-        let new_url = loader::load_rpcs_url().await?;
-        let mut rpcs_endpoints:Vec<RpcEndpoint> = convert_stringvec_to_rpcendpointvec(new_url)?;
-        self.rpc_url.append(&mut rpcs_endpoints);
+        let existing_urls:HashSet<&str> = self.rpc_url
+            .iter()
+            .map(|i| i.url.as_str())
+            .collect();
+
+        let fetched_urls = loader::load_rpcs_url().await?;
+        let fetched_endpoints = convert_stringvec_to_rpcendpointvec(fetched_urls)?;
+
+        let mut new_url: Vec<RpcEndpoint> = fetched_endpoints
+            .into_iter()
+            .filter(|i| !existing_urls.contains(i.url.as_str()))
+            .collect();
+
+        self.rpc_url.append(&mut new_url);
         self.last_health_check = Instant::now();
         self.refresh_health().await?;
         Ok(())
