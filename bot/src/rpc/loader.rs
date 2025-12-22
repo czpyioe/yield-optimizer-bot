@@ -1,8 +1,5 @@
-use alloy::providers::{Provider, ProviderBuilder};
 use dotenv::dotenv;
-use std::{env, time};
-use std::time::{Duration, Instant};
-// use tokio;
+use std::{env};
 use anyhow::Result;
 use serde::Deserialize;
 

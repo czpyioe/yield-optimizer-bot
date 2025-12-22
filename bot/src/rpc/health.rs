@@ -8,6 +8,7 @@ use crate::rpc::manager::{RpcEndpoint};
 const CONCURRENT_CHECKS:usize = 50;
 const RPC_TIMEOUT:Duration = Duration::from_secs(5);
 
+
 pub async fn check_rpcs_health(endpoints:Vec<RpcEndpoint>)-> Result<Vec<RpcEndpoint>>{
     let results: Vec<RpcEndpoint> = stream::iter(endpoints)
         .map(|endpoint| async move {
@@ -28,6 +29,8 @@ pub async fn check_rpcs_health(endpoints:Vec<RpcEndpoint>)-> Result<Vec<RpcEndpo
         .into_iter()
         .filter(|e| e.is_healthy)
         .collect();
+
+    // healthy.sort_by(|a, b| a.latency.cmp(&b.latency));
 
     Ok(healthy)
 }

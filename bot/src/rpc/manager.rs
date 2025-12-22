@@ -4,6 +4,7 @@ use std::collections::HashSet;
 
 use crate::rpc::loader;
 use crate::rpc::health;
+use crate::rpc::utils;
 
 pub struct RpcManager{
     pub rpc_url: Vec<RpcEndpoint>,
@@ -21,7 +22,7 @@ pub struct RpcEndpoint{
     pub is_healthy: bool,
     pub last_checked: Instant,
     pub use_count:u32,
-    pub last_used:Instant
+    pub last_used:Instant,
 }
 
 
@@ -39,14 +40,34 @@ impl RpcManager{
 
     async fn initialize(&mut self)-> Result<()>{
         let rpcs_url = loader::load_rpcs_url().await?;
-        self.rpc_url = convert_stringvec_to_rpcendpointvec(rpcs_url)?;
+        self.rpc_url = utils::convert_stringvec_to_rpcendpointvec(rpcs_url)?;
         self.last_rpc_fetch = Instant::now();
         self.refresh_health().await?;
         Ok(())
     }
 
-    async fn get_provider(&mut self)->Result<()>{
-        Ok(())
+    // get provider/rotate
+    pub async fn get_provider(&mut self) -> Result<String> {
+        let best_rpc = self.select_best_rpc()?;
+        best_rpc.use_count += 1;
+        best_rpc.last_used = Instant::now();
+
+        Ok(best_rpc.url.clone())
+    }
+
+    fn select_best_rpc(&mut self) -> Result<&mut RpcEndpoint> {
+        let mut candidates: Vec<(usize, usize)> = self.rpc_url
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, rpc)| {
+                utils::compute_rpc_score(rpc).ok().map(|score| (idx, score))
+            })
+            .collect();
+
+        candidates.sort_by_key(|&(_, score)| score);
+        let best_idx = candidates[0].0;
+        
+        Ok(&mut self.rpc_url[best_idx])
     }
 
     async fn refresh_health(&mut self) -> Result<()>{
@@ -55,14 +76,14 @@ impl RpcManager{
         Ok(())
     }
 
-    async fn fetch_new_rpcs(& mut self)-> Result<()>{
+    async fn fetch_new_rpcs(&mut self)-> Result<()>{
         let existing_urls:HashSet<&str> = self.rpc_url
             .iter()
             .map(|i| i.url.as_str())
             .collect();
 
         let fetched_urls = loader::load_rpcs_url().await?;
-        let fetched_endpoints = convert_stringvec_to_rpcendpointvec(fetched_urls)?;
+        let fetched_endpoints = utils::convert_stringvec_to_rpcendpointvec(fetched_urls)?;
 
         let mut new_url: Vec<RpcEndpoint> = fetched_endpoints
             .into_iter()
@@ -70,22 +91,9 @@ impl RpcManager{
             .collect();
 
         self.rpc_url.append(&mut new_url);
-        self.last_health_check = Instant::now();
+        self.last_rpc_fetch = Instant::now();
         self.refresh_health().await?;
         Ok(())
     }
 }
 
-
-fn convert_stringvec_to_rpcendpointvec(string_vec:Vec<String>)->Result<Vec<RpcEndpoint>>{
-    let rpcs_endpoints:Vec<RpcEndpoint> = string_vec.iter()
-        .map(|url| RpcEndpoint{
-        url:url.clone(),
-        latency:None,
-        is_healthy:true,
-        last_checked:Instant::now(),
-        use_count:0,
-        last_used:Instant::now()
-    }).collect();
-    Ok(rpcs_endpoints)
-}
