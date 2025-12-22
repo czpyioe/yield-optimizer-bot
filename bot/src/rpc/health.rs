@@ -30,8 +30,6 @@ pub async fn check_rpcs_health(endpoints:Vec<RpcEndpoint>)-> Result<Vec<RpcEndpo
         .filter(|e| e.is_healthy)
         .collect();
 
-    // healthy.sort_by(|a, b| a.latency.cmp(&b.latency));
-
     Ok(healthy)
 }
 

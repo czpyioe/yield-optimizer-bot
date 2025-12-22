@@ -8,7 +8,6 @@ use crate::rpc::utils;
 
 pub struct RpcManager{
     pub rpc_url: Vec<RpcEndpoint>,
-    current_index: usize,
     last_health_check: Instant,
     last_rpc_fetch: Instant,
     health_check_interval: Duration,
@@ -30,7 +29,6 @@ impl RpcManager{
     pub fn new(health_check_interval:Duration,rpc_fetch_interval:Duration) -> Self {
         Self {
             rpc_url: Vec::new(),
-            current_index:0,
             last_health_check: Instant::now(),
             last_rpc_fetch: Instant::now(),
             health_check_interval,
@@ -56,17 +54,16 @@ impl RpcManager{
     }
 
     fn select_best_rpc(&mut self) -> Result<&mut RpcEndpoint> {
-        let mut candidates: Vec<(usize, usize)> = self.rpc_url
+        let best = self.rpc_url
             .iter()
             .enumerate()
             .filter_map(|(idx, rpc)| {
-                utils::compute_rpc_score(rpc).ok().map(|score| (idx, score))
+                utils::compute_rpc_score(rpc).map(|score| (idx, score))
             })
-            .collect();
+            .min_by_key(|&(_, score)| score);
 
-        candidates.sort_by_key(|&(_, score)| score);
-        let best_idx = candidates[0].0;
-        
+        let (best_idx, _) = best.ok_or_else(|| anyhow::anyhow!("no healthy RPC available"))?;
+
         Ok(&mut self.rpc_url[best_idx])
     }
 

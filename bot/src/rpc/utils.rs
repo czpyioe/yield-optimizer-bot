@@ -9,7 +9,7 @@ pub fn convert_stringvec_to_rpcendpointvec(string_vec:Vec<String>)->Result<Vec<R
         .map(|url| RpcEndpoint{
         url:url.clone(),
         latency:None,
-        is_healthy:true,
+        is_healthy:false,
         last_checked:Instant::now(),
         use_count:0,
         last_used:Instant::now()
@@ -18,8 +18,8 @@ pub fn convert_stringvec_to_rpcendpointvec(string_vec:Vec<String>)->Result<Vec<R
 }
 
 
-pub fn compute_rpc_score(rpc_endpoint:&RpcEndpoint)->Result<usize>{
-    let mut score:usize = rpc_endpoint.latency.unwrap().as_millis() as usize;
+pub fn compute_rpc_score(rpc_endpoint:&RpcEndpoint)->Option<usize>{
+    let mut score = rpc_endpoint.latency?.as_millis() as usize;
 
     match rpc_endpoint.last_used.elapsed().as_secs_f64(){
         n if n<10.0=>score+=200,
@@ -27,5 +27,5 @@ pub fn compute_rpc_score(rpc_endpoint:&RpcEndpoint)->Result<usize>{
         n if n<60.0=>score+=50,
         _=> ()
     }
-    Ok(score)
+    Some(score)
 }
