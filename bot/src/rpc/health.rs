@@ -25,12 +25,7 @@ pub async fn check_rpcs_health(endpoints:Vec<RpcEndpoint>)-> Result<Vec<RpcEndpo
         .collect()
         .await;    
 
-    let healthy: Vec<RpcEndpoint> = results
-        .into_iter()
-        .filter(|e| e.is_healthy)
-        .collect();
-
-    Ok(healthy)
+    Ok(results)
 }
 
 

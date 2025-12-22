@@ -36,7 +36,7 @@ impl RpcManager{
         }
     }
 
-    async fn initialize(&mut self)-> Result<()>{
+    pub async fn initialize(&mut self)-> Result<()>{
         let rpcs_url = loader::load_rpcs_url().await?;
         self.rpc_url = utils::convert_stringvec_to_rpcendpointvec(rpcs_url)?;
         self.last_rpc_fetch = Instant::now();
@@ -45,7 +45,7 @@ impl RpcManager{
     }
 
     // get provider/rotate
-    pub async fn get_provider(&mut self) -> Result<String> {
+    pub async fn get_rpc_url(&mut self) -> Result<String> {
         let best_rpc = self.select_best_rpc()?;
         best_rpc.use_count += 1;
         best_rpc.last_used = Instant::now();
@@ -57,6 +57,7 @@ impl RpcManager{
         let best = self.rpc_url
             .iter()
             .enumerate()
+            .filter(|(_, rpc)| rpc.is_healthy && rpc.latency.is_some())
             .filter_map(|(idx, rpc)| {
                 utils::compute_rpc_score(rpc).map(|score| (idx, score))
             })
