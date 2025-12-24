@@ -13,8 +13,6 @@
 4. Add automatic reconnection logic for WebSocket streams.
 5. Add rate limiting to avoid RPC bans.
 6. Add periodic health checks for each provider.
-7. Expose a unified interface for “read call”, “send tx”, and “subscribe to events”.
-
 ---
 
 ## **2. Contract Bindings (Alloy)**
@@ -23,7 +21,7 @@
 
 **Steps:**
 
-1. Decide whether you use ABIs or macro-based definitions.
+1. Import abis.
 2. Create a folder for protocol contract bindings.
 3. Generate or write bindings for each protocol (Aave, Curve, Pendle, Uniswap, etc.).
 4. Create helper functions for reading data (e.g., balances, reserves, APYs).

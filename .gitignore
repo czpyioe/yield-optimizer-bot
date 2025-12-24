@@ -1,2 +1,3 @@
 target/
 .env
+contract_bindings_structure.md
