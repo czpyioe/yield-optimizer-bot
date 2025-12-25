@@ -1,6 +1,7 @@
 use std::time::{Duration, Instant};
 use anyhow::Result;
 use std::collections::HashSet;
+use alloy::providers::{Provider, ProviderBuilder}; 
 
 use crate::rpc::loader;
 use crate::rpc::health;
@@ -44,13 +45,17 @@ impl RpcManager{
         Ok(())
     }
 
+    pub async fn init_test(self)->Result<impl Provider>{
+        Ok(ProviderBuilder::new().connect_http("https://mainnet.infura.io/v3/0635adb2d8d644188490eb2cfe091818".parse()?))
+    }
+
     // get provider/rotate
-    pub async fn get_rpc_url(&mut self) -> Result<String> {
+    pub async fn get_provider(&mut self) -> Result<impl Provider> {
         let best_rpc = self.select_best_rpc()?;
         best_rpc.use_count += 1;
         best_rpc.last_used = Instant::now();
 
-        Ok(best_rpc.url.clone())
+        Ok(ProviderBuilder::new().connect_http(best_rpc.url.parse()?))
     }
 
     fn select_best_rpc(&mut self) -> Result<&mut RpcEndpoint> {

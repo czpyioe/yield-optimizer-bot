@@ -36,8 +36,8 @@ mod tests {
         let mut manager = RpcManager::new(health_check_interval,rpc_fetch_interval);
         manager.initialize().await.unwrap();
         
-        let rpc_url = manager.get_rpc_url().await;
-        assert!(rpc_url.is_ok(), "Should return a valid provider");
+        let provider = manager.get_provider().await;
+        assert!(provider.is_ok(), "Should return a valid provider");
     }
 
     #[tokio::test]
@@ -47,8 +47,7 @@ mod tests {
         let mut manager = RpcManager::new(health_check_interval,rpc_fetch_interval);
         manager.initialize().await.unwrap();
         
-        let rpc_url = manager.get_rpc_url().await.unwrap();
-        let provider =  ProviderBuilder::new().connect(&rpc_url).await.unwrap();
+        let provider = manager.get_provider().await.unwrap();
         let block_number = provider.get_block_number().await;
         
         assert!(block_number.is_ok(), "Should fetch block number");
