@@ -81,3 +81,10 @@
    * strategy opportunity found
 5. Add periodic reporting.
 
+
+
+## Run the bot
+```bash
+sudo docker compose build bot 
+sudo docker run --rm -it yield_optimizer-bot
+```
