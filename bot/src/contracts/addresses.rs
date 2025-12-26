@@ -1,20 +1,30 @@
-use alloy::primitives::Address;
+use alloy::{network, primitives::Address};
 use anyhow::Result;
 
-pub struct Addresses{
-    // ethereum mainnet
-    pub eth_aave_protocol_data_provider:Address,
+pub enum AaveContract{
+    AaveProtocolDataProvider,
+    Pool
+}
 
-    // arbitrum mainnet
-    pub arb_aave_protocol_data_provider:Address,
+pub enum Network{
+    Ethereum,
+    Arbitrum,
+    Base,
 }
 
 
-impl Addresses {
-    pub fn get_mainnet_addresses()->Result<Self>{
-        Ok(Self {
-            eth_aave_protocol_data_provider:"0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD".parse()?,
-            arb_aave_protocol_data_provider:"0x243Aa95cAC2a25651eda86e80bEe66114413c43b".parse()?,
-        })
-    }
+pub fn get_aave_contract_address(network:Network,contract: AaveContract) -> Result<Address> {
+    let addr = match (network, contract) {
+        // Ethereum mainnet
+        (Network::Ethereum, AaveContract::AaveProtocolDataProvider) => "0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD",
+        (Network::Ethereum, AaveContract::Pool) => "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2",
+        
+        // Arbitrum mainnet
+        (Network::Arbitrum, AaveContract::AaveProtocolDataProvider) => "0x243Aa95cAC2a25651eda86e80bEe66114413c43b",
+        (Network::Arbitrum, AaveContract::Pool) => "0x794a61358D6845594F94dc1DB02A252b5b4814aD",
+        
+        _ => anyhow::bail!("Contract address not configured yet"),
+    };
+
+    Ok(addr.parse()?)
 }
