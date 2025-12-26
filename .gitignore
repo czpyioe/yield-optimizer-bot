@@ -1,3 +1,6 @@
 target/
 .env
+
+# tmp
 contract_bindings_structure.md
+README_initial.md
