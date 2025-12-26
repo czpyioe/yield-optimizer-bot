@@ -49,7 +49,6 @@ impl RpcManager{
         Ok(ProviderBuilder::new().connect_http("https://mainnet.infura.io/v3/0635adb2d8d644188490eb2cfe091818".parse()?))
     }
 
-    // get provider/rotate
     pub async fn get_provider(&mut self) -> Result<impl Provider> {
         let best_rpc = self.select_best_rpc()?;
         best_rpc.use_count += 1;
