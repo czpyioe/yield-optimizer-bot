@@ -38,7 +38,7 @@
 
 1. Add migrations folder and rust db folder.
 2. Setup connection and apply migrations.
-3. 
+3. Implement functions to insert into tables
 
 ---
 

@@ -1,80 +1,45 @@
+use alloy::contract;
 use alloy::providers::Provider;
 use alloy::primitives::Address;
 use anyhow::Result;
-use crate::network_choice;
+
+use crate::contracts::addresses::{AaveContract,Network};
 
 use crate::contracts::bindings::aave::AaveProtocolDataProvider;
 use crate::contracts::addresses;
 
-pub async fn get_aave_tokens_reserves<P: Provider>(provider: P, network: network_choice) -> Result<()> {
-    let mainnet_addresses = addresses::Addresses::get_mainnet_addresses()?;
-    let aave_protocol_data_provider_address = match network{
-        network_choice::Ethereum=>mainnet_addresses.eth_aave_protocol_data_provider,
-        network_choice::Arbitrum=>mainnet_addresses.arb_aave_protocol_data_provider,
-        _ => anyhow::bail!("Unsupported network for Aave")
-    };
-    
-    let contract = AaveProtocolDataProvider::new(aave_protocol_data_provider_address, provider);
-    
-    let all_reserves = contract.getAllReservesTokens().call().await?;
+use crate::db::models::Apy_snapshot;
 
-    
-    println!("Found {} reserves:", all_reserves.len());
-    for i in all_reserves.iter() {
-        println!("  {} -> {:?}", i.symbol, i.tokenAddress);
-    }
-    Ok(())
+
+pub fn get_aave_contract<P: Provider>(
+    provider: P,
+    network: Network,
+    aave_contract:AaveContract
+) -> Result<AaveProtocolDataProvider::AaveProtocolDataProviderInstance<P>> {
+    let address = network.get_aave_contract_address(aave_contract)?;
+    Ok(AaveProtocolDataProvider::new(address, provider))
 }
 
-
-pub async fn get_aave_reserve_data<P: Provider>(provider: P, network: network_choice, asset_address:Address) -> Result<()> {
-    let mainnet_addresses = addresses::Addresses::get_mainnet_addresses()?;
-    let aave_protocol_data_provider_address = match network{
-        network_choice::Ethereum=>mainnet_addresses.eth_aave_protocol_data_provider,
-        network_choice::Arbitrum=>mainnet_addresses.arb_aave_protocol_data_provider,
-        _ => anyhow::bail!("Unsupported network for Aave")
-    };
-    
-    let contract = AaveProtocolDataProvider::new(aave_protocol_data_provider_address, provider);
-    
+pub async fn get_apy_snapshot<P:Provider>(provider:P, network: Network,asset_address:Address)->Result<Apy_snapshot>{
+    let contract = get_aave_contract(provider, network,AaveContract::AaveProtocolDataProvider)?;
     let reserve_data = contract.getReserveData(asset_address).call().await?;
 
-    println!("{} - {} - {} - {} - {} - {}",reserve_data.unbacked,reserve_data.accruedToTreasuryScaled,
-        reserve_data.totalAToken,reserve_data.totalStableDebt,
-        reserve_data.totalVariableDebt,reserve_data.liquidityRate);
-    Ok(())
+    let apy = ray_to_apy(reserve_data.liquidityRate.to::<u128>());
+    
+    Ok(Apy_snapshot { 
+        protocol: "aave".to_string(), 
+        network: network.name()?, 
+        asset_address: format!("{:?}", asset_address), 
+        apy: Some(apy) 
+    })
 }
 
-
-pub async fn get_aave_user_reserve_data<P: Provider>(provider: P, network: network_choice, asset_address:Address, user_address:Address) -> Result<()> {
-    let mainnet_addresses = addresses::Addresses::get_mainnet_addresses()?;
-    let aave_protocol_data_provider_address = match network{
-        network_choice::Ethereum=>mainnet_addresses.eth_aave_protocol_data_provider,
-        network_choice::Arbitrum=>mainnet_addresses.arb_aave_protocol_data_provider,
-        _ => anyhow::bail!("Unsupported network for Aave")
-    };
+// helper
+fn ray_to_apy(rate: u128) -> f64 {
+    const RAY: f64 = 1e27;
+    const SECONDS_PER_YEAR: f64 = 31536000.0;
     
-    let contract = AaveProtocolDataProvider::new(aave_protocol_data_provider_address, provider);
-    
-    let reserve_data = contract.getUserReserveData(asset_address,user_address).call().await?;
-
-    println!("{} - {}",reserve_data.currentATokenBalance,reserve_data.liquidityRate);
-    Ok(())
+    let rate_per_second = rate as f64 / RAY;
+    ((1.0 + rate_per_second).powf(SECONDS_PER_YEAR) - 1.0) * 100.0
 }
 
-
-pub async fn get_aave_reserve_configuration_data<P: Provider>(provider: P, network: network_choice, asset_address:Address) -> Result<()> {
-    let mainnet_addresses = addresses::Addresses::get_mainnet_addresses()?;
-    let aave_protocol_data_provider_address = match network{
-        network_choice::Ethereum=>mainnet_addresses.eth_aave_protocol_data_provider,
-        network_choice::Arbitrum=>mainnet_addresses.arb_aave_protocol_data_provider,
-        _ => anyhow::bail!("Unsupported network for Aave")
-    };
-    
-    let contract = AaveProtocolDataProvider::new(aave_protocol_data_provider_address, provider);
-    
-    let reserve_data = contract.getReserveConfigurationData(asset_address).call().await?;
-
-    println!("{} - {}",reserve_data.borrowingEnabled,reserve_data.isActive);
-    Ok(())
-}

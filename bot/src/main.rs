@@ -8,11 +8,7 @@ use std::time::Duration;
 use dotenv::dotenv;
 use std::{env};
 
-enum network_choice{
-    Ethereum,
-    Arbitrum,
-    Base,
-}
+
 
 #[tokio::main]
 async fn main() -> Result<()> {
