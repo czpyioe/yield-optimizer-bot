@@ -7,7 +7,7 @@ use std::time::Duration;
 use std::{env};
 
 use crate::stratgey::fetcher;
-use crate::contracts::addresses::{Network,Asset};
+use crate::contracts::addresses::{CompoundAsset, CompoundContract, Network};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -28,12 +28,13 @@ async fn main() -> Result<()> {
 
 
     let network = Network::Ethereum;
+    let compound_asset = CompoundAsset::USDC;
 
-    let asset_address = network.get_asset_address(Asset::USDC)?;
+    let contract_address = network.get_compound_contract_address(CompoundContract::cTokenv3,compound_asset)?;
 
-    println!("Network: {}, Asset_address: {}",network.name()?,asset_address);
+    println!("Network: {}, Contract address: {}",network.name()?,contract_address);
 
-    let apy_aave = fetcher::fetch_and_store_aave_apy(provider, Network::Ethereum, asset_address, &pool).await?;
+    let apy_aave = fetcher::fetch_and_store_compound_apy(provider, Network::Ethereum, compound_asset, &pool).await?;
 
 
     println!("APY of USDC: {}%", apy_aave);

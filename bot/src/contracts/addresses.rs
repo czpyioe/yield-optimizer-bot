@@ -7,6 +7,10 @@ pub enum AaveContract{
     Pool
 }
 
+pub enum CompoundContract{
+    cTokenv3,
+}
+
 #[derive(Debug, Clone, Copy)]
 pub enum Network{
     Ethereum,
@@ -14,13 +18,19 @@ pub enum Network{
     Base,
 }
 
-pub enum Asset {
+pub enum AaveAsset {
     USDC,
     WETH,
+}
 
+#[derive(Debug, Clone, Copy)]
+pub enum CompoundAsset {
+    USDC,
+    WETH
 }
 
 impl Network{
+    // Aave
     pub fn get_aave_contract_address(self:&Network,contract: AaveContract) -> Result<Address> {
         let addr = match (self, contract) {
             // Ethereum mainnet
@@ -33,23 +43,48 @@ impl Network{
             
             _ => anyhow::bail!("Contract address not configured yet"),
         };
-
         Ok(addr.parse()?)
     }
-
-    pub fn get_asset_address(self:&Network, asset:Asset)->Result<Address>{
+    pub fn get_asset_address_aave(self:&Network, asset:AaveAsset)->Result<Address>{
         let addr = match (self,asset) {
             // Ethereum mainet
-            (Network::Ethereum,Asset::USDC)=>"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+            (Network::Ethereum,AaveAsset::USDC)=>"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
 
 
             // Arbitrum mainnet
-            (Network::Arbitrum,Asset::USDC)=>"0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
+            (Network::Arbitrum,AaveAsset::USDC)=>"0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
 
             _=>anyhow::bail!("Asset address not configured yet")
         };
         Ok(addr.parse()?)
     }
+
+
+
+    //Compound
+    pub fn get_compound_contract_address(self:&Network,contract: CompoundContract, asset:CompoundAsset) -> Result<Address> {
+        let addr = match (self, contract, asset) {
+            // Ethereum mainnet
+            (Network::Ethereum, CompoundContract::cTokenv3, CompoundAsset::USDC) => "0xc3d688B66703497DAA19211EEdff47f25384cdc3",
+            (Network::Ethereum, CompoundContract::cTokenv3, CompoundAsset::WETH) => "0xA17581A9E3356d9A858b789D68B4d866e593aE94",
+
+            // Arbitrum mainnet
+            (Network::Arbitrum, CompoundContract::cTokenv3, CompoundAsset::USDC) => "0x9c4ec768c28520B50860ea7a15bd7213a9fF58bf",
+            (Network::Arbitrum, CompoundContract::cTokenv3, CompoundAsset::WETH) => "0x6f7D514bbD4aFf3BcD1140B7344b32f063dEe486",
+          
+            _ => anyhow::bail!("Contract address not configured yet"),
+        };
+        Ok(addr.parse()?)
+    }
+
+
+
+
+
+
+
+
+
 
     pub fn name(self:&Network)->Result<String>{
         let name = match self{
@@ -61,3 +96,13 @@ impl Network{
     }
 }
 
+
+impl CompoundAsset{
+    pub fn name(self:&CompoundAsset)->Result<String>{
+        let name = match self {
+            CompoundAsset::USDC=>"USDC",
+            CompoundAsset::WETH=>"WETH"
+        };
+        Ok(name.to_string())
+    }
+}

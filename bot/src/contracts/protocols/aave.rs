@@ -29,12 +29,11 @@ pub async fn get_apy_snapshot<P:Provider>(provider:P, network: Network,asset_add
     Ok(ApySnapshot { 
         protocol: "aave".to_string(), 
         network: network.name()?, 
-        asset_address: format!("{:?}", asset_address), 
+        asset: format!("{:?}", asset_address), 
         apy: Some(apy) 
     })
 }
 
-// helper
 // helper
 fn ray_to_apy(rate: u128) -> f64 {
     const RAY: f64 = 1e27;

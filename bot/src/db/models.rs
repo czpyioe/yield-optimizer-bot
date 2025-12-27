@@ -11,6 +11,6 @@ pub struct Position{
 pub struct ApySnapshot{
     pub protocol:String,
     pub network:String,
-    pub asset_address:String,
+    pub asset:String,
     pub apy:Option<f64>
 }
