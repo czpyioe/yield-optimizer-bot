@@ -14,6 +14,12 @@ pub enum Network{
     Base,
 }
 
+pub enum Asset {
+    USDC,
+    WETH,
+
+}
+
 impl Network{
     pub fn get_aave_contract_address(self:&Network,contract: AaveContract) -> Result<Address> {
         let addr = match (self, contract) {
@@ -28,6 +34,20 @@ impl Network{
             _ => anyhow::bail!("Contract address not configured yet"),
         };
 
+        Ok(addr.parse()?)
+    }
+
+    pub fn get_asset_address(self:&Network, asset:Asset)->Result<Address>{
+        let addr = match (self,asset) {
+            // Ethereum mainet
+            (Network::Ethereum,Asset::USDC)=>"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+
+
+            // Arbitrum mainnet
+            (Network::Arbitrum,Asset::USDC)=>"0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
+
+            _=>anyhow::bail!("Asset address not configured yet")
+        };
         Ok(addr.parse()?)
     }
 

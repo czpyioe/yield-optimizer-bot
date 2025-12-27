@@ -2,6 +2,7 @@
 mod tests {
     use std::time::{Duration, Instant};
     use alloy::providers::{Provider, ProviderBuilder};
+    use crate::rpc::manager::RpcManager;
 
     use crate::rpc::*;
 

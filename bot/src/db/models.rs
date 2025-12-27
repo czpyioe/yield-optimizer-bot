@@ -7,8 +7,8 @@ pub struct Position{
 }
 
 
-
-pub struct Apy_snapshot{
+#[derive(Clone)]
+pub struct ApySnapshot{
     pub protocol:String,
     pub network:String,
     pub asset_address:String,

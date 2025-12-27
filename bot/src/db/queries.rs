@@ -1,6 +1,6 @@
 use sqlx::{PgPool, query};
 use anyhow::Result;
-use crate::db::models::{Position};
+use crate::db::models::{Position,ApySnapshot};
 
 
 pub async fn insert_position(pool:&PgPool,position:Position)->Result<()>{
@@ -11,6 +11,19 @@ pub async fn insert_position(pool:&PgPool,position:Position)->Result<()>{
         .bind(position.asset_address)
         .bind(position.amount)
         .bind(position.apy)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
+
+pub async fn insert_apy_snapshot(pool:&PgPool,apy_snapshot:ApySnapshot)->Result<()>{
+    query(
+        "INSERT INTO apy_snapshots (protocol, network, asset_address, apy) VALUES ($1, $2, $3, $4)")
+        .bind(apy_snapshot.protocol)
+        .bind(apy_snapshot.network)
+        .bind(apy_snapshot.asset_address)
+        .bind(apy_snapshot.apy)
         .execute(pool)
         .await?;
     Ok(())
