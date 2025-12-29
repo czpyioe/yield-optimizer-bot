@@ -3,7 +3,7 @@ use alloy::providers::Provider;
 use alloy::primitives::Address;
 use anyhow::Result;
 
-use crate::contracts::addresses::{CompoundContract,CompoundAsset,Network};
+use crate::contracts::addresses::{CompoundContract,Asset,Network,Protocol};
 
 use crate::contracts::bindings::compound::cTokenv3;
 use crate::contracts::addresses;
@@ -15,14 +15,14 @@ pub fn get_compound_contract<P: Provider>(
     provider: P,
     network: Network,
     compound_contract:CompoundContract,
-    compound_asset:CompoundAsset
+    asset:Asset   
 ) -> Result<cTokenv3::cTokenv3Instance<P>> {
-    let address = network.get_compound_contract_address(compound_contract,compound_asset)?;
+    let address = network.get_compound_contract_address(compound_contract,asset)?;
     Ok(cTokenv3::new(address, provider))
 }
 
-pub async fn get_apy_snapshot<P:Provider>(provider:P, network: Network,compound_asset:CompoundAsset)->Result<ApySnapshot>{
-    let contract = get_compound_contract(provider, network,CompoundContract::cTokenv3,compound_asset)?;
+pub async fn get_apy_snapshot<P:Provider>(provider:P, network: Network,asset:Asset)->Result<ApySnapshot>{
+    let contract = get_compound_contract(provider, network,CompoundContract::CTokenv3,asset)?;
     let utilization = contract.getUtilization().call().await?;
 
     let supply_rate = contract.getSupplyRate(utilization).call().await?;
@@ -30,9 +30,9 @@ pub async fn get_apy_snapshot<P:Provider>(provider:P, network: Network,compound_
     let apy = supply_rate_to_apy(supply_rate);
     
     Ok(ApySnapshot { 
-        protocol: "compound".to_string(),
-        network: network.name()?, 
-        asset: compound_asset.name()?, 
+        protocol: Protocol::Compound.name().to_string(),
+        network: network.name().to_string(), 
+        asset: asset.name().to_string(), 
         apy: Some(apy) 
     })
 }

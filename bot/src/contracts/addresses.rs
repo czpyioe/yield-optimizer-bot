@@ -33,7 +33,7 @@ impl Asset {
     }
 }
 
-
+#[derive(Debug, Clone, Copy)]
 pub enum Protocol{
     Aave,
     Compound
@@ -61,10 +61,24 @@ impl Protocol{
         }
     }
     
-    pub fn supports(&self, asset: Asset) -> bool {
+    pub fn supports_asset(&self, asset: Asset) -> bool {
         match self {
             Protocol::Aave => asset.is_on_aave(),
             Protocol::Compound => asset.is_on_compound(),
+        }
+    }
+
+    pub fn supported_networks(&self) -> Vec<Network> {
+        match self {
+            Protocol::Aave => vec![Network::Ethereum, Network::Arbitrum],
+            Protocol::Compound => vec![Network::Ethereum, Network::Arbitrum],
+        }
+    }
+    
+    pub fn supports_network(&self, network: Network) -> bool {
+        match self {
+            Protocol::Aave => network.is_on_aave(),
+            Protocol::Compound => network.is_on_compound(),
         }
     }
 
@@ -90,6 +104,14 @@ impl Network{
             Network::Ethereum,
             Network::Arbitrum,
         ]
+    }
+
+    pub fn is_on_aave(&self) -> bool {
+        matches!(self,Network::Ethereum | Network::Arbitrum)
+    }
+
+    pub fn is_on_compound(&self) -> bool {
+        matches!(self,Network::Ethereum | Network::Arbitrum)
     }
 
     // Aave

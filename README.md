@@ -47,3 +47,25 @@
 ```bash
 docker compose up --build
 ```
+
+## Protocols
+
+### Core Lending
+- Aave
+- Compound
+- Morpho
+
+---
+
+### Liquid Staking
+- Lido
+- Rocket Pool
+- Frax
+
+---
+
+### Low-IL Liquidity Pools
+- Uniswap
+- Curve
+- Balancer
+
