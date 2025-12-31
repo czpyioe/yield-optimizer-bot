@@ -31,7 +31,7 @@ pub async fn snapshot_all_apys<P:Provider + Clone>(provider:P, pool:&PgPool) ->R
                     Err(e)=>Err((task,e))
                 }
             }
-})
+        })
         .buffer_unordered(50)
         .collect()
         .await;

@@ -19,7 +19,7 @@ async fn measure_latency(url: &str) -> Result<Duration> {
     let start = Instant::now();
     
     let provider = ProviderBuilder::new()
-        .connect_http(url.parse()?);
+        .connect(url).await?;
 
     provider.get_chain_id().await?;
     

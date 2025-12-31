@@ -1,18 +1,23 @@
-// bot/src/main.rs
 mod rpc;
 mod contracts;
 mod db;
 mod strategy;
 
 use anyhow::Result;
-use std::time::Duration;
+use futures::future::Inspect;
+use std::time::{Duration, Instant};
 use std::env;
+
+use crate::rpc::manager::*;
+use crate::contracts::addresses::Network;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     println!("Starting ...");
 
-    rpc::loader::request_lama_rpcs().await?;
+    let mut pool = NetworkProviderPool::new(Duration::from_secs(300));
+    pool.initialize().await?;
+    
 
     Ok(())
 }

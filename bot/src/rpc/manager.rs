@@ -77,15 +77,13 @@ impl NetworkProviderPool {
             .await;
 
         let mut providers: Vec<ProviderWithScore> = stream::iter(healthy_endpoints)
-            .then(|endpoint| async move {
-                let url = endpoint.url.as_str();
+            .map(|endpoint| async move {
                 let provider = ProviderBuilder::new()
-                    .connect(url)
+                    .connect(endpoint.url.as_str())
                     .await
                     .ok()?;
 
-                let score = endpoint
-                    .latency
+                let score = endpoint.latency
                     .map(|l| l.as_millis() as usize)
                     .unwrap_or(10_000);
 
@@ -95,6 +93,7 @@ impl NetworkProviderPool {
                     score,
                 })
             })
+            .buffer_unordered(50)
             .filter_map(|x| async move { x })
             .collect()
             .await;
@@ -110,29 +109,43 @@ impl NetworkProviderPool {
         self.pools.get(network)
     }
 
+    
     pub async fn refresh_health(&mut self) -> Result<()> {
-        if self.last_health_check.elapsed() < self.health_check_interval {
-            return Ok(());
-        }
+        // if self.last_health_check.elapsed() < self.health_check_interval {
+        //     return Ok(());
+        // }
 
-        let networks: Vec<Network> = self.pools.keys().copied().collect();
-        
-        for network in networks {
-            if let Some(providers) = self.pools.get(&network) {
-                let urls: Vec<String> = providers
+        let inputs: Vec<(Network, Vec<String>)> = self.pools
+            .iter()
+            .map(|(&network, providers)| {
+                let urls = providers
                     .iter()
                     .map(|p| p.endpoint.url.clone())
-                    .collect();
-                
-                let (_, new_providers) = self.process_network(network, urls).await?;
-                self.pools.insert(network, new_providers);
-            }
+                    .collect::<Vec<_>>();
+
+                (network, urls)
+            })
+            .collect();
+
+        let futures = inputs
+            .into_iter()
+            .map(|(network, urls)| self.process_network(network, urls));
+
+        let results:  Vec<Result<(Network, Vec<ProviderWithScore>)>> = stream::iter(futures)
+            .buffer_unordered(3)
+            .collect()
+            .await;
+
+            for result in results {
+            let (network, providers) = result?;
+            self.pools.insert(network, providers);
         }
-        
+
         self.last_health_check = Instant::now();
         Ok(())
     }
 
+    
     pub fn stats(&self, network: &Network) -> Option<NetworkStats> {
         let providers = self.pools.get(network)?;
         
