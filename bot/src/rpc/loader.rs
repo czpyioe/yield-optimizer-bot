@@ -1,5 +1,6 @@
 use alloy::network;
 use dotenv::dotenv;
+use std::os::linux::net;
 use std::{env};
 use anyhow::Result;
 use serde::Deserialize;
@@ -20,8 +21,6 @@ pub struct RpcUrl{
     url:String
 }
 
-
-// should load .env rpc and lama rpc form the api
 pub async fn load_rpcs_url() -> Result<HashMap<Network,Vec<String>>>{
     let mut all_rpcs:HashMap<Network,Vec<String>> = HashMap::new();
     if let Ok(rpcs) = load_env_rpcs(){
@@ -43,9 +42,9 @@ fn load_env_rpcs() -> Result<HashMap<Network,Vec<String>>>{
     let mut rpcs_urls: HashMap<Network,Vec<String>> = HashMap::new();
     for (k,v) in env::vars(){
         if k.starts_with("RPC_URL"){
-            let network = if k.starts_with("ETH") {
+            let network = if k.contains("ETH") {
                 Network::Ethereum
-            } else if k.starts_with("ARB") {
+            } else if k.contains("ARB") {
                 Network::Arbitrum
             } else {
                 continue;
@@ -64,9 +63,12 @@ pub async fn request_lama_rpcs()->Result<HashMap<Network,Vec<String>>>{
         .json()
         .await?;
 
-    for chain in body{
-        let network = Network::get_network_from_chain_id(chain.chainId)?;
-
+    for network in Network::all(){
+        let chain = body.iter().find(|c| c.chainId == network.get_chain_id());
+        let chain = match chain{
+            Some(c)=>c.clone(),
+            None=>continue
+        };
         let urls:Vec<String> = chain.rpc.into_iter()
             .map(|rpc| rpc.url)
             .filter(|url| utils::is_valid_http_rpc_url(url))
