@@ -1,54 +1,27 @@
 use alloy::providers::{Provider, ProviderBuilder};
-use std::time::{Instant};
+use std::time::Instant;
 use anyhow::Result;
-use futures::stream::{self,StreamExt};
 use tokio::time::{timeout, Duration};
-use crate::rpc::manager::{RpcEndpoint};
-
-const CONCURRENT_CHECKS:usize = 50;
-const RPC_TIMEOUT:Duration = Duration::from_secs(5);
+use crate::rpc::manager::RpcEndpoint;
 
 
-pub async fn check_rpcs_health(endpoints:Vec<RpcEndpoint>)-> Result<Vec<RpcEndpoint>>{
-    let results: Vec<RpcEndpoint> = stream::iter(endpoints)
-        .map(|endpoint| async move {
-            match timeout(RPC_TIMEOUT, check_one_rpc(endpoint.clone())).await {
-                Ok(result)=>result,
-                Err(_)=>{
-                    let mut e = endpoint;
-                    e.is_healthy = false;
-                    e
-                }
-            }
-        })
-        .buffer_unordered(CONCURRENT_CHECKS)
-        .collect()
-        .await;    
-
-    Ok(results)
+pub async fn check_endpoint_health(mut endpoint: RpcEndpoint) -> Result<RpcEndpoint> {
+    let result = timeout(Duration::from_secs(3), measure_latency(&endpoint.url)).await?;
+    
+    endpoint.latency = match result {
+        Ok(latency) => Some(latency),
+        _ => None,
+    };
+    Ok(endpoint)
 }
 
-
-async fn check_one_rpc(mut endpoint: RpcEndpoint)->RpcEndpoint{
+async fn measure_latency(url: &str) -> Result<Duration> {
     let start = Instant::now();
-    let mut is_healthy = false;
-    let mut latency = None; 
+    
+    let provider = ProviderBuilder::new()
+        .connect_http(url.parse()?);
 
-    match ProviderBuilder::new().connect(&endpoint.url).await{
-        Ok(provider)=>{
-            if provider.get_chain_id().await.is_ok() {
-                is_healthy = true;
-                latency = Some(start.elapsed());
-            }
-        },
-        Err(_)=>{
-            is_healthy=false
-        }
-    };
-
-    endpoint.latency = latency;
-    endpoint.is_healthy = is_healthy;
-    endpoint.last_checked = Instant::now();
-
-    endpoint
+    provider.get_chain_id().await?;
+    
+    Ok(start.elapsed())
 }

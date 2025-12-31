@@ -3,7 +3,7 @@ use alloy::{providers::Provider};
 use sqlx::PgPool;
 use futures::stream::{self, StreamExt};
 
-use crate::{contracts::{addresses::{Asset, Network,Protocol}, protocols}, stratgey::fetcher};
+use crate::{contracts::{addresses::{Asset, Network,Protocol}, protocols}, strategy::fetcher};
 
 #[derive(Debug, Clone, Copy)]
 struct SnapshotTask{

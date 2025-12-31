@@ -1,101 +1,163 @@
 use std::time::{Duration, Instant};
 use anyhow::Result;
-use std::collections::HashSet;
+use std::collections::HashMap;
 use alloy::providers::{Provider, ProviderBuilder}; 
+use std::sync::Arc;
+use futures::stream::{self, StreamExt};
 
 use crate::rpc::loader;
 use crate::rpc::health;
 use crate::rpc::utils;
+use crate::contracts::addresses::Network;
 
-pub struct RpcManager{
-    pub rpc_url: Vec<RpcEndpoint>,
-    last_health_check: Instant,
-    last_rpc_fetch: Instant,
-    health_check_interval: Duration,
-    rpc_fetch_interval: Duration
+#[derive(Clone)]
+pub struct RpcEndpoint {
+    pub url: String,
+    pub latency: Option<Duration>,
 }
 
 #[derive(Clone)]
-pub struct RpcEndpoint{
-    pub url: String,
-    pub latency: Option<Duration>,
-    pub is_healthy: bool,
-    pub last_checked: Instant,
-    pub use_count:u32,
-    pub last_used:Instant,
+pub struct ProviderWithScore {
+    pub provider: Arc<dyn Provider>,
+    pub endpoint: RpcEndpoint,
+    pub score: usize,
 }
 
+pub struct NetworkProviderPool {
+    pools: HashMap<Network, Vec<ProviderWithScore>>,
+    last_health_check: Instant,
+    health_check_interval: Duration,
+}
 
-impl RpcManager{
-    pub fn new(health_check_interval:Duration,rpc_fetch_interval:Duration) -> Self {
+impl NetworkProviderPool {
+    pub fn new(health_check_interval: Duration) -> Self {
         Self {
-            rpc_url: Vec::new(),
+            pools: HashMap::new(),
             last_health_check: Instant::now(),
-            last_rpc_fetch: Instant::now(),
             health_check_interval,
-            rpc_fetch_interval,
         }
     }
 
-    pub async fn initialize(&mut self)-> Result<()>{
-        let rpcs_url = loader::load_rpcs_url().await?;
-        self.rpc_url = utils::convert_stringvec_to_rpcendpointvec(rpcs_url)?;
-        self.last_rpc_fetch = Instant::now();
-        self.refresh_health().await?;
+    pub async fn initialize(&mut self) -> Result<()> {
+        let rpc_urls_by_network = loader::load_rpcs_url().await?;
+
+        let futures = rpc_urls_by_network
+            .into_iter()
+            .map(|(network, urls)| self.process_network(network, urls));
+
+        let results: Vec<Result<(Network, Vec<ProviderWithScore>)>> = stream::iter(futures)
+            .buffer_unordered(3)
+            .collect()
+            .await;
+
+        for result in results {
+            let (network, providers) = result?;
+            if !providers.is_empty() {
+                self.pools.insert(network, providers);
+            }
+        }
+
+        self.last_health_check = Instant::now();
         Ok(())
     }
+    
+    async fn process_network(&self, network: Network, urls: Vec<String>) -> Result<(Network, Vec<ProviderWithScore>)> {
+        let endpoints: Vec<RpcEndpoint> = utils::create_endpoints(urls);
 
-    pub async fn init_test(self)->Result<impl Provider>{
-        Ok(ProviderBuilder::new().connect_http("https://mainnet.infura.io/v3/0635adb2d8d644188490eb2cfe091818".parse()?))
-    }
-
-    pub async fn get_provider(&mut self) -> Result<impl Provider> {
-        let best_rpc = self.select_best_rpc()?;
-        best_rpc.use_count += 1;
-        best_rpc.last_used = Instant::now();
-
-        Ok(ProviderBuilder::new().connect_http(best_rpc.url.parse()?))
-    }
-
-    fn select_best_rpc(&mut self) -> Result<&mut RpcEndpoint> {
-        let best = self.rpc_url
-            .iter()
-            .enumerate()
-            .filter(|(_, rpc)| rpc.is_healthy && rpc.latency.is_some())
-            .filter_map(|(idx, rpc)| {
-                utils::compute_rpc_score(rpc).map(|score| (idx, score))
+        let healthy_endpoints: Vec<RpcEndpoint> = stream::iter(endpoints)
+            .map(health::check_endpoint_health)
+            .buffer_unordered(50)
+            .filter_map(|res| async move {
+                match res {
+                    Ok(endpoint) if endpoint.latency.is_some() => Some(endpoint),
+                    _ => None,
+                }
             })
-            .min_by_key(|&(_, score)| score);
+            .collect()
+            .await;
 
-        let (best_idx, _) = best.ok_or_else(|| anyhow::anyhow!("no healthy RPC available"))?;
+        let mut providers: Vec<ProviderWithScore> = stream::iter(healthy_endpoints)
+            .then(|endpoint| async move {
+                let url = endpoint.url.as_str();
+                let provider = ProviderBuilder::new()
+                    .connect(url)
+                    .await
+                    .ok()?;
 
-        Ok(&mut self.rpc_url[best_idx])
+                let score = endpoint
+                    .latency
+                    .map(|l| l.as_millis() as usize)
+                    .unwrap_or(10_000);
+
+                Some(ProviderWithScore {
+                    provider: Arc::new(provider),
+                    endpoint,
+                    score,
+                })
+            })
+            .filter_map(|x| async move { x })
+            .collect()
+            .await;
+
+        providers.sort_by_key(|p| p.score);
+
+        Ok((network, providers))
     }
 
-    async fn refresh_health(&mut self) -> Result<()>{
-        self.rpc_url = health::check_rpcs_health(self.rpc_url.clone()).await?;
+
+
+    pub fn get_all_providers(&self, network: &Network) -> Option<&Vec<ProviderWithScore>> {
+        self.pools.get(network)
+    }
+
+    pub async fn refresh_health(&mut self) -> Result<()> {
+        if self.last_health_check.elapsed() < self.health_check_interval {
+            return Ok(());
+        }
+
+        let networks: Vec<Network> = self.pools.keys().copied().collect();
+        
+        for network in networks {
+            if let Some(providers) = self.pools.get(&network) {
+                let urls: Vec<String> = providers
+                    .iter()
+                    .map(|p| p.endpoint.url.clone())
+                    .collect();
+                
+                let (_, new_providers) = self.process_network(network, urls).await?;
+                self.pools.insert(network, new_providers);
+            }
+        }
+        
         self.last_health_check = Instant::now();
         Ok(())
     }
 
-    async fn fetch_new_rpcs(&mut self)-> Result<()>{
-        let existing_urls:HashSet<&str> = self.rpc_url
-            .iter()
-            .map(|i| i.url.as_str())
-            .collect();
+    pub fn stats(&self, network: &Network) -> Option<NetworkStats> {
+        let providers = self.pools.get(network)?;
+        
+        let total = providers.len();
+        let avg_latency = if total > 0 {
+            let sum: u128 = providers
+                .iter()
+                .filter_map(|p| p.endpoint.latency)
+                .map(|d| d.as_millis())
+                .sum();
+            Some((sum / total as u128) as usize)
+        } else {
+            None
+        };
 
-        let fetched_urls = loader::load_rpcs_url().await?;
-        let fetched_endpoints = utils::convert_stringvec_to_rpcendpointvec(fetched_urls)?;
-
-        let mut new_url: Vec<RpcEndpoint> = fetched_endpoints
-            .into_iter()
-            .filter(|i| !existing_urls.contains(i.url.as_str()))
-            .collect();
-
-        self.rpc_url.append(&mut new_url);
-        self.last_rpc_fetch = Instant::now();
-        self.refresh_health().await?;
-        Ok(())
+        Some(NetworkStats {
+            network: *network,
+            total_providers: total,
+            avg_latency_ms: avg_latency,
+        })
     }
 }
 
+pub struct NetworkStats {
+    pub network: Network,
+    pub total_providers: usize,
+    pub avg_latency_ms: Option<usize>,
+}

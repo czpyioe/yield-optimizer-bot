@@ -85,7 +85,7 @@ impl Protocol{
 }
 
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,Eq, Hash, PartialEq)]
 pub enum Network{
     Ethereum,
     Arbitrum,
@@ -104,6 +104,22 @@ impl Network{
             Network::Ethereum,
             Network::Arbitrum,
         ]
+    }
+
+    pub fn get_chain_id(&self)->usize{
+        match self{
+            Network::Ethereum=>1,
+            Network::Arbitrum=>42161
+        }
+    }
+
+    pub fn get_network_from_chain_id(chain_id:usize)->Result<Network>{
+        let network = match chain_id{
+            1=>Network::Ethereum,
+            42161=>Network::Arbitrum,
+            _=>anyhow::bail!("chain id not found")
+        };
+        Ok(network)
     }
 
     pub fn is_on_aave(&self) -> bool {
