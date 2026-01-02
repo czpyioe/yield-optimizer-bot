@@ -18,8 +18,7 @@ pub async fn check_endpoint_health(mut endpoint: RpcEndpoint) -> Result<RpcEndpo
 async fn measure_latency(url: &str) -> Result<Duration> {
     let start = Instant::now();
     
-    let provider = ProviderBuilder::new()
-        .connect(url).await?;
+    let provider = ProviderBuilder::new().connect(url).await?;
 
     provider.get_chain_id().await?;
     

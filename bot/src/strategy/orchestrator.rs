@@ -18,7 +18,6 @@ struct SnapshotTask{
 
 #[derive(Clone)]
 struct DynamicProvider{
-    provider: Arc<dyn Provider>,
     endpoint_url:String,
     dynamic_score:usize
 }
@@ -26,7 +25,6 @@ struct DynamicProvider{
 impl DynamicProvider{
     fn from_provider_with_score(p:&ProviderWithScore)->Self{
         Self { 
-            provider: p.provider.clone(),
             endpoint_url:p.endpoint.url.clone(),
             dynamic_score: p.score 
         }
@@ -74,8 +72,6 @@ impl DynamicProviderPool{
             provider.penalize_failure();
         }
     }
-
-
 }
 
 
@@ -113,29 +109,25 @@ pub async fn snapshot_all_apys(pools:HashMap<Network, Vec<ProviderWithScore>>, p
         .buffer_unordered(10)
         .collect()
         .await;
-
+    println!("{:?}",results);
     Ok(())
 }
 
 
-async fn fetch_with_retry(
-    dynamic_pool: Arc<Mutex<DynamicProviderPool>>,
-    task: SnapshotTask,
-    db_pool: &PgPool
-) -> Result<f64> {
+async fn fetch_with_retry(dynamic_pool: Arc<Mutex<DynamicProviderPool>>,task: SnapshotTask,db_pool: &PgPool) -> Result<f64> {
     const MAX_RETRIES: usize = 3;
     
     for attempt in 0..MAX_RETRIES {
-        let (provider, endpoint_url) = {
+        let endpoint_url = {
             let mut pool = dynamic_pool.lock().await;
             match pool.get_best() {
-                Some(p) => (p.provider.clone(), p.endpoint_url.clone()),
+                Some(p) => p.endpoint_url.clone(),
                 None => return Err(anyhow::anyhow!("No available providers")),
             }
         };
 
         match fetcher::fetch_and_store_apy(
-            provider,
+            endpoint_url.clone(),
             task.protocol,
             task.network,
             task.asset,
@@ -143,22 +135,13 @@ async fn fetch_with_retry(
         ).await {
             Ok(apy) => return Ok(apy),
             Err(e) => {
-                {
-                    let mut pool = dynamic_pool.lock().await;
-                    pool.report_failure(&endpoint_url);
-                }
-                
-                if attempt >= MAX_RETRIES - 1 {
-                    return Err(anyhow::anyhow!(
-                        "Failed after {} attempts. Last error: {}",
-                        MAX_RETRIES,
-                        e
-                    ));
-                }
+                let mut pool = dynamic_pool.lock().await;
+                pool.report_failure(&endpoint_url);
             }
         }
     }
-    Ok(())
+    
+    Err(anyhow::anyhow!("Failed after {} attempts.",MAX_RETRIES))
 }
 
 

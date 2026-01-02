@@ -21,5 +21,10 @@ async fn main() -> Result<()> {
 
     let providers: std::collections::HashMap<Network, Vec<ProviderWithScore>> = pool.get_pools();
 
+    let db_url = env::var("DATABASE_URL")?;
+    let db_pool = db::pool::connect(&db_url).await?;
+
+    strategy::orchestrator::snapshot_all_apys(providers,&db_pool).await?;
+
     Ok(())
 }

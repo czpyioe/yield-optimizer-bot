@@ -20,7 +20,6 @@ pub struct RpcEndpoint {
 
 #[derive(Clone)]
 pub struct ProviderWithScore {
-    pub provider: Arc<dyn Provider>,
     pub endpoint: RpcEndpoint,
     pub score: usize,
 }
@@ -90,7 +89,6 @@ impl NetworkProviderPool {
                     .unwrap_or(10_000);
 
                 Some(ProviderWithScore {
-                    provider: Arc::new(provider),
                     endpoint,
                     score,
                 })
