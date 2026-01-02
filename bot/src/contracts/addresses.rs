@@ -68,7 +68,6 @@ impl Protocol{
                     Protocol::Compound => vec![Asset::USDC, Asset::WETH],
                 }
             }
-
         }
     }
     
