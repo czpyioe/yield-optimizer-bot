@@ -10,6 +10,8 @@ use crate::rpc::health;
 use crate::rpc::utils;
 use crate::contracts::addresses::Network;
 
+
+
 #[derive(Clone)]
 pub struct RpcEndpoint {
     pub url: String,
@@ -105,15 +107,19 @@ impl NetworkProviderPool {
 
 
 
-    pub fn get_all_providers(&self, network: &Network) -> Option<&Vec<ProviderWithScore>> {
+    pub fn get_all_providers_by_network(&self, network: &Network) -> Option<&Vec<ProviderWithScore>> {
         self.pools.get(network)
+    }
+
+    pub fn get_pools(&self)->HashMap<Network, Vec<ProviderWithScore>>{
+        self.pools.clone()
     }
 
     
     pub async fn refresh_health(&mut self) -> Result<()> {
-        // if self.last_health_check.elapsed() < self.health_check_interval {
-        //     return Ok(());
-        // }
+        if self.last_health_check.elapsed() < self.health_check_interval {
+            return Ok(());
+        }
 
         let inputs: Vec<(Network, Vec<String>)> = self.pools
             .iter()

@@ -7,7 +7,7 @@ use crate::contracts::protocols::{compound,aave};
 use crate::db::queries::insert_apy_snapshot;
 
 
-pub async fn fetch_and_store_apy<P:Provider>(provider:P, protocol: Protocol, network: Network,asset:Asset,pool:&PgPool)->Result<f64>{
+pub async fn fetch_and_store_apy<P:Provider+Clone>(provider:P, protocol: Protocol, network: Network,asset:Asset,pool:&PgPool)->Result<f64>{
     let apy_snapshot = match protocol{
         Protocol::Compound=>compound::get_apy_snapshot(provider, network, asset).await?,
         Protocol::Aave=>aave::get_apy_snapshot(provider, network, asset).await?

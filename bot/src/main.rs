@@ -16,8 +16,10 @@ async fn main() -> Result<()> {
     println!("Starting ...");
 
     let mut pool = NetworkProviderPool::new(Duration::from_secs(300));
+
     pool.initialize().await?;
-    
+
+    let providers: std::collections::HashMap<Network, Vec<ProviderWithScore>> = pool.get_pools();
 
     Ok(())
 }

@@ -54,10 +54,21 @@ impl Protocol{
         }
     }
 
-    pub fn supported_assets(&self) -> Vec<Asset> {
-        match self {
-            Protocol::Aave => vec![Asset::USDC, Asset::WETH],
-            Protocol::Compound => vec![Asset::USDC, Asset::WETH],
+    pub fn supported_assets(&self,network: &Network) -> Vec<Asset> {
+        match network {
+            Network::Ethereum=>{
+                match self{
+                    Protocol::Aave => vec![Asset::USDC, Asset::WETH],
+                    Protocol::Compound => vec![Asset::USDC, Asset::WETH],
+                }
+            },
+            Network::Arbitrum=>{
+                match self{
+                    Protocol::Aave => vec![Asset::USDC, Asset::WETH],
+                    Protocol::Compound => vec![Asset::USDC, Asset::WETH],
+                }
+            }
+
         }
     }
     
