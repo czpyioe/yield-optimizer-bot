@@ -18,16 +18,16 @@ async fn main() -> Result<()> {
     dotenv::dotenv().ok();
     println!("Starting ...");
 
-    // let mut pool = NetworkProviderPool::new(Duration::from_secs(300));
+    let mut pool = NetworkProviderPool::new(Duration::from_secs(300));
 
-    // pool.initialize().await?;
+    pool.initialize().await?;
 
-    // let providers: std::collections::HashMap<Network, Vec<ProviderWithScore>> = pool.get_pools();
+    let providers: std::collections::HashMap<Network, Vec<ProviderWithScore>> = pool.get_pools();
 
-    // let db_url = env::var("DATABASE_URL")?;
-    // let db_pool = db::pool::connect(&db_url).await?;
+    let db_url = env::var("DATABASE_URL")?;
+    let db_pool = db::pool::connect(&db_url).await?;
 
-    // strategy::orchestrator::snapshot_all_apys(providers,&db_pool).await?;
+    db::orchestrator::snapshot_all_apys(providers,&db_pool).await?;
 
     let telegram_api_token = env::var("TELEGRAM_BOT_API_KEY")?;
     let chat_id = env::var("CHAT_ID")?.parse::<i64>()?;

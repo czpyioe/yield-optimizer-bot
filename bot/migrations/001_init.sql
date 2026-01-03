@@ -14,6 +14,6 @@ CREATE TABLE apy_snapshots (
     added_at TIMESTAMP DEFAULT now(),
     protocol TEXT NOT NULL,
     network TEXT NOT NULL,
-    AaveAsset TEXT NOT NULL,
+    asset TEXT NOT NULL,
     apy NUMERIC
 );

@@ -6,8 +6,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use crate::{contracts::{addresses::{Asset, Network,Protocol}, protocols}, strategy::fetcher};
+use crate::{contracts::addresses::{Asset, Network,Protocol}, db};
 use crate::rpc::manager::ProviderWithScore;
+use crate::db::fetcher;
 
 #[derive(Debug, Clone, Copy)]
 struct SnapshotTask{
