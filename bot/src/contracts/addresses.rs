@@ -159,10 +159,11 @@ impl Network{
         let addr = match (self,asset) {
             // Ethereum mainet
             (Network::Ethereum,Asset::USDC)=>"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-
+            (Network::Ethereum,Asset::WETH)=>"0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
 
             // Arbitrum mainnet
             (Network::Arbitrum,Asset::USDC)=>"0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
+            (Network::Arbitrum,Asset::WETH)=>"0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
 
             _=>anyhow::bail!("Asset address not configured yet")
         };
