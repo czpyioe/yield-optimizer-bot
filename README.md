@@ -4,6 +4,40 @@ A Rust-based DeFi yield optimization bot that monitors APY rates across multiple
 
 ---
 
+## **What is This?**
+
+This is an **advisory bot for long-term ETH accumulation**, designed for passive DeFi investors who want to maximize returns without constant monitoring.
+
+**Key Features:**
+- **Advisory, Not Auto-Trading** - The bot sends recommendations; you execute transactions manually
+- **ETH Growth Focus** - Strategies optimized for growing your ETH token balance over time
+- **Passive Investing** - Weekly/daily reports, no need to check constantly
+- **Smart Thresholds** - Only suggests moves when gains justify gas costs and effort
+- **Safe Yield Focus** - Prioritizes established lending protocols (Aave, Compound) with optional LP strategies
+
+**Target User:**
+- Has capital in CEX, ready to deploy to DeFi
+- Adds capital monthly (DCA strategy)
+- Long-term holder (okay with temporary unrealized losses)
+- Wants higher yields than CEX, but won't move funds for 1% temporary gains
+- Prefers growing ETH holdings over USD value
+
+**What It Does:**
+- Monitors lending APYs (Aave, Compound) across multiple networks
+- Tracks liquidity pool opportunities (Uniswap, Curve - coming soon)
+- Sends weekly portfolio reports with current yields
+- Alerts on high-yield opportunities (>5% APY)
+- Suggests monthly capital allocation strategies
+- Recommends rebalancing only when worth the gas + effort
+
+**What It Doesn't Do:**
+- Execute transactions automatically
+- Trade or speculate on price movements
+- Chase high-risk yield farms
+- Require constant user attention
+
+---
+
 ## **Architecture Overview**
 
 ### **1. RPC Manager** (`src/rpc/`)
