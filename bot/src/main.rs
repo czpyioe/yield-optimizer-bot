@@ -13,33 +13,41 @@ use crate::contracts::addresses::Network;
 use crate::telegram::client;
 use crate::strategy::logic;
 
+
 #[tokio::main]
 async fn main() -> Result<()> {
-    dotenv::dotenv().ok();
     println!("Starting ...");
-
-    let mut pool = NetworkProviderPool::new(Duration::from_secs(300));
-    pool.initialize().await?;
-    let providers: std::collections::HashMap<Network, Vec<ProviderWithScore>> = pool.get_pools();
+    dotenv::dotenv().ok();
+    
+    // let mut pool = NetworkProviderPool::new(Duration::from_secs(300));
+    // pool.initialize().await?;
+    // let providers: std::collections::HashMap<Network, Vec<ProviderWithScore>> = pool.get_pools();
 
     let db_url = env::var("DATABASE_URL")?;
     let db_pool = db::pool::connect(&db_url).await?;
-    println!("db url: {}",db_url);
-    // db::pool::run_migrations(&db_pool).await;
 
-    db::orchestrator::snapshot_all_apys(providers,&db_pool).await?;
-
-    let telegram_api_token = env::var("TELEGRAM_BOT_API_KEY")?;
+    let telegram_token = env::var("TELEGRAM_BOT_API_KEY")?;
     let chat_id = env::var("CHAT_ID")?.parse::<i64>()?;
-    let bot = client::TelegramBot::new(telegram_api_token);
+    let telegram_bot = telegram::client::TelegramBot::new(telegram_token, chat_id);
+    
+    let engine = strategy::logic::StrategyEngine::new(
+        db_pool.clone(),
+        telegram_bot.clone(),
+    );
 
-    let stratgey_engine = logic::StartegyEngine::new(db_pool.clone(),bot.clone(),chat_id);
+    let telegram_task = tokio::spawn(
+        telegram::listener::run(telegram_bot.clone(), engine.clone())
+    );
 
-    println!("strategy engine loaded");
+    println!("Bot running...");
 
-    match stratgey_engine.analyze_and_notify().await{
-        Ok(_)=>println!("working"),
-        Err(e)=>println!("error: {}",e)
+    tokio::select! {
+        res = telegram_task => {
+            eprintln!("Telegram task stopped: {:?}", res);
+        }
+        _ = tokio::signal::ctrl_c() => {
+            println!("\nShutting down...");
+        }
     }
 
     Ok(())

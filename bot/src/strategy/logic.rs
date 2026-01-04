@@ -7,30 +7,25 @@ use crate::telegram::{self, client::TelegramBot};
 use crate::db::queries;
 
 
-
-pub struct StartegyEngine {
+#[derive(Clone)]
+pub struct StrategyEngine {
     db_pool:PgPool,
     telegram_bot:TelegramBot,
-    chat_id:i64
 }
 
 
-impl StartegyEngine{
-    pub fn new(db_pool:PgPool,telegram_bot:TelegramBot,chat_id:i64)->Self{
-        Self { 
-            db_pool: db_pool, 
+impl StrategyEngine{
+    pub fn new(db_pool:PgPool,telegram_bot:TelegramBot)->Self{
+        Self {
+            db_pool: db_pool,
             telegram_bot: telegram_bot, 
-            chat_id: chat_id
         }
     }
 
 
-    pub async fn analyze_and_notify(&self)->Result<()>{
-        let best_apy = self.get_best_apy().await?;
-        println!("{:?}",best_apy);
-        let message = self.format_opportunities(best_apy);
-        self.send_alert(&message).await;
-        Ok(())
+    pub async fn get_top_yields(&self, limit: usize) -> Result<Vec<ApySnapshot>> {
+        let results = queries::get_recent_apys(&self.db_pool).await?;
+        Ok(results.into_iter().take(limit).collect())
     }
 
 
@@ -72,9 +67,25 @@ impl StartegyEngine{
         message
     }
 
+    pub fn format_yields(&self, opportunities: &[ApySnapshot]) -> String {
+        let mut message = "*Top Yields:*\n\n".to_string();
+        
+        for (i, snapshot) in opportunities.iter().enumerate() {
+            let apy = snapshot.apy.unwrap_or(0.0);
+            message.push_str(&format!(
+                "{}. {} - {} on {}: *{:.2}%*\n",
+                i + 1,
+                snapshot.asset,
+                snapshot.protocol,
+                snapshot.network,
+                apy
+            ));
+        }
+        message
+    }
 
-    async fn send_alert(&self,message:&String)->Result<()>{
-        self.telegram_bot.send_message(self.chat_id, message).await;
-        Ok(())
+
+    pub async fn send_message(&self, text: &str) -> Result<()> {
+        self.telegram_bot.send_message(text).await
     }
 }
