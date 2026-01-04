@@ -122,7 +122,8 @@ This is an **advisory bot for long-term ETH accumulation**, designed for passive
 
 **Components:**
 - **`client.rs`** - Telegram bot client wrapper
-- **`handlers.rs`** - Command handlers (placeholder)
+- **`commands.rs`** - Command handlers
+- **`listener.rs`** - listen to messages
 - **`mod.rs`** - Module exports
 
 **Features:**
