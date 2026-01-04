@@ -1,20 +1,6 @@
 use sqlx::{PgPool, query};
 use anyhow::Result;
-use crate::db::models::{Position,ApySnapshot};
-
-
-pub async fn insert_position(pool:&PgPool,position:Position)->Result<()>{
-    query(
-        "INSERT INTO positions (protocol, network, asset, amount, apy) VALUES ($1, $2, $3, $4, $5)")
-        .bind(position.protocol)
-        .bind(position.network)
-        .bind(position.asset_address)
-        .bind(position.amount)
-        .bind(position.apy)
-        .execute(pool)
-        .await?;
-    Ok(())
-}
+use crate::db::models::ApySnapshot;
 
 
 pub async fn insert_apy_snapshot(pool:&PgPool,apy_snapshot:ApySnapshot)->Result<()>{
@@ -27,4 +13,21 @@ pub async fn insert_apy_snapshot(pool:&PgPool,apy_snapshot:ApySnapshot)->Result<
         .execute(pool)
         .await?;
     Ok(())
+}
+
+
+pub async fn get_recent_apys(pool: &PgPool) -> Result<Vec<ApySnapshot>> {
+    let results = sqlx::query_as!(
+        ApySnapshot,
+        r#"
+        SELECT protocol, network, asset, apy
+        FROM apy_snapshots
+        WHERE created_at > NOW() - INTERVAL '24 hour'
+        ORDER BY apy DESC
+        "#
+    )
+    .fetch_all(pool)
+    .await?;
+    
+    Ok(results)
 }
