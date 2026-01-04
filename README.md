@@ -133,6 +133,12 @@ This is an **advisory bot for long-term ETH accumulation**, designed for passive
 
 ## Run the bot
 ```bash
+docker compose up postgres -d
+cd bot/
+export DATABASE_URL=postgres://bot:botpassword@localhost:5433/botdb
+cargo install sqlx-cli
+cargo sqlx migrate run
+cargo sqlx prepare
 docker compose up --build
 ```
 

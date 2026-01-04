@@ -22,7 +22,7 @@ pub async fn get_recent_apys(pool: &PgPool) -> Result<Vec<ApySnapshot>> {
         r#"
         SELECT protocol, network, asset, apy
         FROM apy_snapshots
-        WHERE created_at > NOW() - INTERVAL '24 hour'
+        WHERE added_at > NOW() - INTERVAL '24 hour'
         ORDER BY apy DESC
         "#
     )

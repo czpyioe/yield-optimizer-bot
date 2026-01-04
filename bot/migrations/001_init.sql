@@ -4,5 +4,5 @@ CREATE TABLE apy_snapshots (
     protocol TEXT NOT NULL,
     network TEXT NOT NULL,
     asset TEXT NOT NULL,
-    apy NUMERIC
+    apy DOUBLE PRECISION
 );

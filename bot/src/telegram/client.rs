@@ -2,6 +2,7 @@ use teloxide::prelude::{Bot,ChatId, Requester};
 use anyhow::Result;
 
 
+#[derive(Clone)]
 pub struct TelegramBot{
     bot: Bot
 }

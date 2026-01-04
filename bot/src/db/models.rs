@@ -1,4 +1,4 @@
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub struct ApySnapshot{
     pub protocol:String,
     pub network:String,

@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT protocol, network, asset, apy\n        FROM apy_snapshots\n        WHERE added_at > NOW() - INTERVAL '24 hour'\n        ORDER BY apy DESC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "protocol",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "network",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "asset",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "apy",
+        "type_info": "Float8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "cf3936d1d1821061a563ef53492666b16d617e8ad03d2830cbce9f2534eab856"
+}
