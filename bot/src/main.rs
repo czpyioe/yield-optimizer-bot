@@ -5,14 +5,11 @@ mod strategy;
 mod telegram;
 
 use anyhow::Result;
+use teloxide::Bot;
 use std::time::{Duration, Instant};
 use std::env;
 
-use crate::rpc::manager::*;
-use crate::contracts::addresses::Network;
-use crate::telegram::client;
-use crate::strategy::logic;
-
+use crate::telegram::dispatcher;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -26,17 +23,10 @@ async fn main() -> Result<()> {
     let db_url = env::var("DATABASE_URL")?;
     let db_pool = db::pool::connect(&db_url).await?;
 
-    let telegram_token = env::var("TELEGRAM_BOT_API_KEY")?;
-    let chat_id = env::var("CHAT_ID")?.parse::<i64>()?;
-    let telegram_bot = telegram::client::TelegramBot::new(telegram_token, chat_id);
-    
-    let engine = strategy::logic::StrategyEngine::new(
-        db_pool.clone(),
-        telegram_bot.clone(),
-    );
+    let bot = Bot::from_env();
 
     let telegram_task = tokio::spawn(
-        telegram::listener::run(telegram_bot.clone(), engine.clone())
+        dispatcher::run(bot)
     );
 
     println!("Bot running...");
